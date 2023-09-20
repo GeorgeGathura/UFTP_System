@@ -11,18 +11,17 @@
 1. Multiple Single file transfer
 2. Concurrent file transfer to a client
 3. Concurrent file transfer to multiple clients from the sender
-4. Encrypting Data. e.g. SSL, crypography
+4. Encrypting Data. e.g. SSL, cryptography
 5. Compression mechanisms
 
 ## Global Considerations for all implementations
 - Packet ordering
 - Error checking (checksum validation)
 - Progress tracking - estimated times, timeouts, retransmissions,
+- Storage of transmissions i.e buffer or on-disk storage
+## Glossary
 
-
-
-
-
-dmachio
+Sender -
+Receiver -
 
 
