@@ -19,10 +19,9 @@
 - Error checking (checksum validation)
 - Progress tracking - estimated times, timeouts, retransmissions,
 
+## Glossary
 
-
-
-
-dmachio
+Sender -
+Receiver -
 
 
