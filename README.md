@@ -11,9 +11,8 @@
 1. Multiple Single file transfer
 2. Concurrent file transfer to a client
 3. Concurrent file transfer to multiple clients from the sender
-4.
-5.
-6.
+4. Encrypting Data. e.g. SSL, crypography
+5. Compression mechanisms
 
 ## Global Considerations for all implementations
 - Packet ordering
