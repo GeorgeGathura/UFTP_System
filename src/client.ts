@@ -8,14 +8,23 @@ function main() {
   const client = dgram.createSocket('udp4')
 
   const readStream = createReadStream(file)
+  const waitForConnect = new Promise((resolve) => {
+    client.connect(8080, 'localhost', () => {
+      resolve(undefined)
+    })
+  })
   readStream
-    .on('data', (chunk) => {
-      client.send(chunk, 8080, 'localhost', (err) => {
+    .on('data', async (chunk) => {
+      console.log('ReadyToSend')
+      await waitForConnect
+      client.send(chunk, (err) => {
         if (err) {
           client.close()
           console.error('ErrorSendingMessage', { err })
+          return
         }
-      })
+        console.log('SentChunk')
+      });
     })
     .on('end', () => {
       console.log('DoneSendingData')
