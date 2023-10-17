@@ -8,11 +8,11 @@ const server = dgram.createSocket('udp4')
 
 const DATA_DIRECTORY = './data/'
 
-function maybeCreateDataDirectory() {
+function CreateDataDirectory(directory:string) {
   return new Promise((resolve, reject) => {
-    access(DATA_DIRECTORY, function (error) {
+    access(directory, function (error) {
       if (error) {
-        mkdir(DATA_DIRECTORY, (err) => {
+        mkdir(directory, (err) => {
           if (err) {
             return reject(err)
           }
@@ -35,11 +35,12 @@ server.on('message', async (msg, rinfo) => {
 
   const fileName = `${rinfo.address}-${rinfo.port}.uftp`
 
-  await maybeCreateDataDirectory()
+  await CreateDataDirectory(DATA_DIRECTORY)
   console.log('ReadyToWriteTo', {file: path.resolve(DATA_DIRECTORY, fileName)})
   writeStream = writeStream
     ? writeStream
     : createWriteStream(path.resolve(DATA_DIRECTORY, fileName))
+
   writeStream.write(msg,(err)=>{
     if (err) {
       return console.error('WriteFailed', {err});
