@@ -36,17 +36,21 @@ server.on('message', async (msg, rinfo) => {
   const fileName = `${rinfo.address}-${rinfo.port}.uftp`
 
   await CreateDataDirectory(DATA_DIRECTORY)
-  console.log('ReadyToWriteTo', {file: path.resolve(DATA_DIRECTORY, fileName)})
   writeStream = writeStream
     ? writeStream
     : createWriteStream(path.resolve(DATA_DIRECTORY, fileName))
 
-  writeStream.write(msg,(err)=>{
+  const sequenceNumber = msg.readInt16BE()
+  const dataLength = msg.readInt32BE(2)
+  console.log({sequenceNumber, dataLength})
+  const data = Buffer.alloc(dataLength)
+  msg.copy(data, 10)
+  console.log(`Received message for sequenceNumber = ${sequenceNumber}`)
+
+  writeStream.write(data,(err)=>{
     if (err) {
       return console.error('WriteFailed', {err});
     }
-
-    console.log('WriteSuccessful')
   })
 })
 
