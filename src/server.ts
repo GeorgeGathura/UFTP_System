@@ -1,55 +1,51 @@
 import dgram from 'node:dgram'
-import { createWriteStream, access, mkdir, type WriteStream } from 'fs'
+import { createWriteStream, type WriteStream } from 'fs'
 import path from 'path'
+import { createDataDirectory } from './common';
 
-let writeStream: WriteStream | undefined;
+const writeStreams = new Map<string, WriteStream>()
 
 const server = dgram.createSocket('udp4')
-
-const DATA_DIRECTORY = './data/'
-
-function CreateDataDirectory(directory:string) {
-  return new Promise((resolve, reject) => {
-    access(directory, function (error) {
-      if (error) {
-        mkdir(directory, (err) => {
-          if (err) {
-            return reject(err)
-          }
-          resolve(undefined)
-        })
-      } else {
-        resolve(undefined)
-      }
-    })
-  })
-}
 
 server.on('error', (err) => {
   console.error(`server error:\n${err.stack}`)
   server.close()
 })
 
+let lastSequenceNumber: number
 server.on('message', async (msg, rinfo) => {
   console.log(`server got a msg from ${rinfo.address}:${rinfo.port}`)
 
-  await CreateDataDirectory(DATA_DIRECTORY)
+  const dataDirectory = `./data/${rinfo.address}/${rinfo.port}/`
+
+  await createDataDirectory(dataDirectory)
 
   const sequenceNumber = msg.readInt16BE()
 
-  const fileNameLength = msg.readInt16BE(2)
-  const fileName = Buffer.alloc(fileNameLength)
-  msg.copy(fileName, 0, 4, fileNameLength + 4)
+  if(typeof lastSequenceNumber !== 'undefined' && lastSequenceNumber + 1 !== sequenceNumber) {
+    console.error('SequenceNumberOutOfSync', {sequenceNumber, lastSequenceNumber})
+  }
+  lastSequenceNumber = sequenceNumber
 
-  writeStream = writeStream
-    ? writeStream
-    : createWriteStream(path.resolve(DATA_DIRECTORY, fileName.toString()))
+  const fileNameLength = msg.readInt16BE(2)
+  const fileNameBuf = Buffer.alloc(fileNameLength)
+  msg.copy(fileNameBuf, 0, 4, fileNameLength + 4)
+  const fileName = fileNameBuf.toString()
+  
+  const fileNameKey = `${rinfo.address}/${rinfo.port}/${fileName}`
+  if(!writeStreams.has(fileNameKey)) {
+    writeStreams.set(
+      fileNameKey,
+      createWriteStream(path.resolve(dataDirectory, fileName))
+    )
+  }
+  const writeStream = writeStreams.get(fileNameKey)!
 
   const dataLength = msg.readInt32BE(fileNameLength + 4)
 
   const data = Buffer.alloc(dataLength)
   msg.copy(data, 0, fileNameLength + 8)
-  console.log(`Received message for sequenceNumber = ${sequenceNumber}`)
+  console.log(`Received message for sequenceNumber = ${sequenceNumber}`, {sequenceNumber, fileNameLength, fileName: fileName, dataLength})
 
   writeStream.write(data,(err)=>{
     if (err) {

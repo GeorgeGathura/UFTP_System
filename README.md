@@ -24,4 +24,19 @@
 Sender -
 Receiver -
 
+## Troubleshooting
 
+1. `EMSGSIZE` error can be resolved on Mac OS by running `sudo sysctl net.inet.udp.maxdgram=65536`
+
+## Todos for next session:
+
+- Handle large file transfer
+    - server:
+        - Create a temporary file where all the chunks get saved
+        - Decide when to ask for chunks that haven't been received
+        - Re-arrange after we receive everything
+        - How do we decide that we have received everything
+    - client:
+        - Should be able to resend chunks
+        - Save temporary file that holds chunks and some metadata
+        - Save metadata about chunks saved into temporary file
