@@ -35,8 +35,17 @@ Receiver -
         - Create a temporary file where all the chunks get saved
         - Decide when to ask for chunks that haven't been received
         - Re-arrange after we receive everything
-        - How do we decide that we have received everything
+        - How do we decide that we have received everything: if we receive a chunk that doesn't have any data. It will have only a sequence number, file name length, the file name and the data length (should be zero).
     - client:
         - Should be able to resend chunks
         - Save temporary file that holds chunks and some metadata
         - Save metadata about chunks saved into temporary file
+
+## Questions to handle next time:
+
+- Dropped packets
+- Corrupted packets
+
+## Corner cases:
+
+- Empty text file
