@@ -49,8 +49,6 @@ async function main() {
       
       outBuf.write(fileName, 4, fileName.length, 'utf-8')
 
-      const tempBuf = Buffer.alloc(fileName.length)
-      outBuf.copy(tempBuf, 0, 4, 4 + fileName.length)
       outBuf.writeInt32BE(chunk.length, fileName.length + 4)
       chunk.copy(outBuf, fileName.length + 8)
 

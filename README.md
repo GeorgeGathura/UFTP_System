@@ -7,6 +7,38 @@
   ensure data integrity.
 - Contains additional features such as progress tracking and concurrent file transfers.
 
+## Protocol
+
+- The client will send a packet with the following structure:
+  - 2 bytes representing sequence number
+  - 2 bytes for filename length
+  - bytes equal to filename length for the filename
+  - 4 bytes for the chunk length
+  - bytes equal to the chunk length for the chunk
+- Send a packet with chunk length equal to zero when we have sent all the chunks for a given file
+- End signal is defined as a packet with chunk length equal to zero
+- Proactive client:
+  - The client requires server to send acks of chunks
+  - If some chunks are not acknowledged, then resend them
+  - Wait until all the chunks have been acknowledged before sending end signal
+  - Batching acknowledgements:
+    - Batching every couple of seconds
+    - Batching once a batch reaches a given size
+  - Resend missing chunks
+    1. Find missing chunks
+    2. Resend missing chunks
+    3. Repeat (1) and (2) as long as there are missing chunks
+    4. When everything has been sent and acknowledged, send end signal
+  - Server needs to deal with chunks that are sent multiple times
+- Data corruption
+  - decided on a hashing algo
+  - add a checksum of the chunk
+  - server to verify the checksum and only send an acknowledgement if checksum matches
+- Encryption
+  - Encrypt chunk using a TBD algorithm
+- Compression
+  - Use gunzip for compression
+
 ## Implementations / Strategies
 1. Multiple Single file transfer
 2. Concurrent file transfer to a client
