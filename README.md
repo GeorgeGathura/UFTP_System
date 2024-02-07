@@ -31,11 +31,11 @@
     4. When everything has been sent and acknowledged, send end signal
   - Server needs to deal with chunks that are sent multiple times
 - Data corruption
-  - decided on a hashing algo
+  - use md5 for hashing
   - add a checksum of the chunk
   - server to verify the checksum and only send an acknowledgement if checksum matches
 - Encryption
-  - Encrypt chunk using a TBD algorithm
+  - Encrypt chunk using aes256
 - Compression
   - Use gunzip for compression
 
@@ -72,6 +72,15 @@ Receiver -
         - Should be able to resend chunks
         - Save temporary file that holds chunks and some metadata
         - Save metadata about chunks saved into temporary file
+
+
+## Discussion on 7th Feb
+- Remove setTimeout hack and get batch ack from server & replace with a promise once all ack are received.
+- The server will send a packet with the following structure:
+  - 2 bytes representing sequence number
+  - 2 bytes for filename length
+  - bytes equal to filename length for the filename
+
 
 ## Questions to handle next time:
 
