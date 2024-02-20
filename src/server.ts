@@ -51,6 +51,58 @@ function getFilenameDirectory({port, address, filename}: {port: number, address:
 }
 
 let lastSequenceNumber: number
+let ackQueue: {sequenceNumber: number, fileName: string}[] = []
+const ACQ_QUEUE_MAX_SIZE = 5
+const ACQ_QUEUE_TIMEOUT = 5_000
+let ackQueueTimer: NodeJS.Timeout | undefined
+
+function sendAck({address, port}: dgram.RemoteInfo) {
+  let outputBufferSize = 0
+  for (const sequence of ackQueue) {
+    outputBufferSize += 4 + sequence.fileName.length
+  }
+  const outputBuffer = Buffer.alloc(outputBufferSize)
+  let offset = 0
+  while (ackQueue.length) {
+    const sequence = ackQueue.pop()!
+
+    outputBuffer.writeInt16BE(sequence.sequenceNumber, offset)
+    offset += 2
+    outputBuffer.writeInt16BE(sequence.fileName.length, offset)
+    offset += 2
+    outputBuffer.write(sequence.fileName, offset)
+    offset += sequence.fileName.length
+  }
+  
+  const client = dgram.createSocket('udp4')
+  client.connect(port, address, () => {
+    client.send(outputBuffer, (err) => {
+      client.close()
+      if (err) {
+        console.error('SendAckFailed', {err})
+        return
+      }
+      console.info('SendAckSucceeded')
+    })
+  })
+}
+
+function flush(rinfo: dgram.RemoteInfo) {
+  if (ackQueue.length >= ACQ_QUEUE_MAX_SIZE) {
+    sendAck(rinfo)
+    clearTimeout(ackQueueTimer)
+    ackQueueTimer = undefined
+    return
+  }
+
+  if (!ackQueueTimer) {
+    ackQueueTimer = setTimeout(() => {
+      sendAck(rinfo)
+      ackQueueTimer = undefined
+    }, ACQ_QUEUE_TIMEOUT)
+  }
+}
+
 server.on('message', async (msg, rinfo) => {
   console.log(`server got a msg from ${rinfo.address}:${rinfo.port}`)
 
@@ -113,6 +165,9 @@ server.on('message', async (msg, rinfo) => {
       return console.error('WriteFailed', {err});
     }
   })
+
+  ackQueue.push({sequenceNumber, fileName})
+  flush(rinfo)
 })
 
 server.on('listening', () => {

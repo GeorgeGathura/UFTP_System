@@ -81,6 +81,10 @@ Receiver -
   - 2 bytes for filename length
   - bytes equal to filename length for the filename
 
+## Discussion on 20th Feb
+- For small file such as package.json, server seems to expect 2 sequences instead of just one
+- Implement acknowledgement on client side
+- Remove setTimeout hack after implementing acknowledgement on client side
 
 ## Questions to handle next time:
 
