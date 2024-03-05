@@ -9,6 +9,7 @@ type PromiseResolve = (value: unknown) => void
 
 const writeStreams = new Map<string, Set<number>>()
 const readyToCompilePromises = new Map<string, [Promise<unknown>, PromiseResolve | undefined]>()
+const largestSequenceNumbers = new Map<string, number>()
 
 const server = dgram.createSocket('udp4')
 
@@ -37,6 +38,11 @@ async function compileChunks({filename, port, address}: {filename: string, port:
       })
       console.log('DoneWritingChunk')
       sequenceNumber += 1
+
+      if(sequenceNumber > (largestSequenceNumbers.get(filename) ?? 0)) {
+        console.log('DoneCompilingAllChunks', {sequenceNumber: sequenceNumber - 1})
+        break
+      }
     } catch(error) {
       console.error('ErrorWhileWritingChunk', {error, sequenceNumber})
       break
@@ -127,7 +133,7 @@ server.on('message', async (msg, rinfo) => {
   if(readyToCompilePromises.has(fileName)) {
     let promiseResolve: PromiseResolve | undefined = undefined
     const promise = new Promise((resolve) => {
-      promiseResolve = promiseResolve
+      promiseResolve = resolve
     })
     readyToCompilePromises.set(fileName, [promise, promiseResolve])
   }
@@ -139,8 +145,16 @@ server.on('message', async (msg, rinfo) => {
       await promise
     }
 
-    return compileChunks({filename: fileName, port: rinfo.port, address: rinfo.address})
+    await compileChunks({filename: fileName, port: rinfo.port, address: rinfo.address})
+    writeStreams.delete(fileName)
+    return
   }
+
+
+  if (!largestSequenceNumbers.has(fileName)) {
+    largestSequenceNumbers.set(fileName, -1)
+  }
+  largestSequenceNumbers.set(fileName, largestSequenceNumbers.get(fileName) ?? 0 + 1)
 
   const data = Buffer.alloc(dataLength)
   msg.copy(data, 0, fileNameLength + 8)
