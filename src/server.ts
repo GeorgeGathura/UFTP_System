@@ -80,16 +80,12 @@ function sendAck({address, port}: dgram.RemoteInfo) {
     offset += sequence.fileName.length
   }
   
-  const client = dgram.createSocket('udp4')
-  client.connect(port, address, () => {
-    client.send(outputBuffer, (err) => {
-      client.close()
-      if (err) {
-        console.error('SendAckFailed', {err})
-        return
-      }
-      console.info('SendAckSucceeded')
-    })
+  server.send(outputBuffer, port, address, (err) => {
+    if (err) {
+      console.error('SendAckFailed', {err})
+      return
+    }
+    console.info('SendAckSucceeded')
   })
 }
 

@@ -5,7 +5,8 @@ import path from 'node:path'
 
 const CLIENT_TEMP_STORE = './temp/client/'
 
-const sequences = new Map<number, {start: number, end: number}>()
+const sequences = new Map<number, {start: number, end: number, acknowledged?: boolean}>()
+let sequencesAcknowledged = 0
 
 async function main() {
   const files = process.argv.slice(2)
@@ -73,16 +74,30 @@ async function main() {
 
       sequenceNumber++
     })
-    .on('end', async () => {
-      // wait until everything has been sent
-      await promise
-      await new Promise((resolve) => {
-        setTimeout(resolve, 5_000)
-      })
+  
+  client.on('message', (msg, rinfo) => {
+    console.log(`server got a msg from ${rinfo.address}:${rinfo.port}`)
+    let offset = 0
+    while(offset < msg.length) {
+      const sequenceNumber = msg.readInt16BE(offset)
+      const fileNameLength = msg.readInt16BE(2)
+      const fileNameBuf = Buffer.alloc(fileNameLength)
+      msg.copy(fileNameBuf, 0, 4, fileNameLength + 4)
+      const fileName = fileNameBuf.toString()
+      console.log('ReceivedAckForSequence', {sequenceNumber, fileName, messageLength: msg.length})
+      const sequence = sequences.get(sequenceNumber) ?? {start: 0, end: 0}
+      sequences.set(sequenceNumber, {start: sequence.start, end: sequence.end, acknowledged: true})
 
+      sequencesAcknowledged++
+      offset += 4 + fileNameLength
+    }
+
+    if (sequencesAcknowledged === sequences.size) {
+      console.log('ReceivedAcksForAllSequences')
       const fileName = file.split(path.sep).pop()
       if(!fileName) {
         readStream.close()
+        client.close()
         return console.error('UnexpectedFileNameMissing', {file})
       }
 
@@ -101,8 +116,9 @@ async function main() {
           return
         }
         console.log('SentTerminatingMessage')
-      });      
-    })
+      }); 
+    }
+  })
 }
 
 main()
