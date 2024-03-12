@@ -1,6 +1,6 @@
 import dgram from 'node:dgram'
 import path from 'path'
-import { createDataDirectory } from './common';
+import { createDataDirectory, readMessage } from './common';
 import { access } from 'node:fs/promises';
 import { type WriteStream, createWriteStream, createReadStream } from 'node:fs';
 import {rimraf} from 'rimraf'
@@ -108,23 +108,18 @@ function flush(rinfo: dgram.RemoteInfo) {
 server.on('message', async (msg, rinfo) => {
   console.log(`server got a msg from ${rinfo.address}:${rinfo.port}`)
 
-  const sequenceNumber = msg.readInt16BE()
+  const {sequenceNumber, fileName} = readMessage(msg, 0)
 
   if(typeof lastSequenceNumber !== 'undefined' && lastSequenceNumber + 1 !== sequenceNumber) {
     console.error('SequenceNumberOutOfSync', {sequenceNumber, lastSequenceNumber})
   }
   lastSequenceNumber = sequenceNumber
 
-  const fileNameLength = msg.readInt16BE(2)
-  const fileNameBuf = Buffer.alloc(fileNameLength)
-  msg.copy(fileNameBuf, 0, 4, fileNameLength + 4)
-  const fileName = fileNameBuf.toString()
-
   const filenameDirectory = getFilenameDirectory({port: rinfo.port, address: rinfo.address, filename: fileName})
   const dataDirectory = `${filenameDirectory}/temp/`
   await createDataDirectory(dataDirectory)
 
-  const dataLength = msg.readInt32BE(fileNameLength + 4)
+  const dataLength = msg.readInt32BE(fileName.length + 4)
 
   if(readyToCompilePromises.has(fileName)) {
     let promiseResolve: PromiseResolve | undefined = undefined
@@ -150,11 +145,11 @@ server.on('message', async (msg, rinfo) => {
   if (!largestSequenceNumbers.has(fileName)) {
     largestSequenceNumbers.set(fileName, -1)
   }
-  largestSequenceNumbers.set(fileName, largestSequenceNumbers.get(fileName) ?? 0 + 1)
+  largestSequenceNumbers.set(fileName, largestSequenceNumbers.get(fileName)! + 1)
 
   const data = Buffer.alloc(dataLength)
-  msg.copy(data, 0, fileNameLength + 8)
-  console.log(`Received message for sequenceNumber = ${sequenceNumber}`, {sequenceNumber, fileNameLength, fileName: fileName, dataLength})
+  msg.copy(data, 0, fileName.length + 8)
+  console.log(`Received message for sequenceNumber = ${sequenceNumber}`, {sequenceNumber, fileNameLength: fileName.length, fileName: fileName, dataLength})
 
   const writeStream = createWriteStream(path.resolve(dataDirectory, `${sequenceNumber}.chunk`))
   if (!writeStreams.has(fileName)) {

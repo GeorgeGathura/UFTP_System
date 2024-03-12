@@ -1,12 +1,34 @@
 import dgram from 'node:dgram'
 import { createReadStream } from 'fs'
 import path from 'node:path'
+import { readMessage } from './common'
 
 
 const CLIENT_TEMP_STORE = './temp/client/'
 
 const sequences = new Map<number, {start: number, end: number, acknowledged?: boolean}>()
 let sequencesAcknowledged = 0
+
+async function sendTerminatingSignal(client: dgram.Socket, fileName: string, sequenceNumber: number) {
+  const outBuf = Buffer.alloc(2 + 2 + fileName.length + 4)
+    outBuf.writeInt16BE(sequenceNumber)
+    outBuf.writeInt16BE(fileName.length, 2)
+    
+    outBuf.write(fileName, 4, fileName.length, 'utf-8')
+    outBuf.writeInt32BE(0, fileName.length + 4)
+
+    await new Promise((resolve) => {
+      client.send(outBuf, (err) => {
+        resolve(undefined)
+
+        if (err) {
+          console.error('ErrorSendingTerminatingMessage', { err })
+          return
+        }
+        console.log('SentTerminatingMessage')
+      })
+  }); 
+}
 
 async function main() {
   const files = process.argv.slice(2)
@@ -23,11 +45,6 @@ async function main() {
   })
   let sequenceNumber = 0
   let start = 0
-  let sending = 0
-  let promiseResolve: (value: unknown) => void
-  let promise = new Promise((resolve) => {
-    promiseResolve = resolve
-  })
 
   readStream
     .on('error', (err) => {
@@ -58,38 +75,30 @@ async function main() {
       start += chunk.length
       console.log({sequences, sequenceNumber, fileNameLength: fileName.length, fileName, chunkLength: chunk.length})
 
-      sending ++
       client.send(outBuf, (err) => {
         if (err) {
           console.error('ErrorSendingMessage', { err })
           readStream.close()
           return
         }
-        sending--
-        if (sending === 0) {
-          promiseResolve(undefined)
-        }
+
         console.log('SentChunk', {sequences})
       });
 
       sequenceNumber++
     })
   
-  client.on('message', (msg, rinfo) => {
+  client.on('message', async (msg, rinfo) => {
     console.log(`server got a msg from ${rinfo.address}:${rinfo.port}`)
     let offset = 0
     while(offset < msg.length) {
-      const sequenceNumber = msg.readInt16BE(offset)
-      const fileNameLength = msg.readInt16BE(2)
-      const fileNameBuf = Buffer.alloc(fileNameLength)
-      msg.copy(fileNameBuf, 0, 4, fileNameLength + 4)
-      const fileName = fileNameBuf.toString()
+      const {sequenceNumber, fileName} = readMessage(msg, offset)
       console.log('ReceivedAckForSequence', {sequenceNumber, fileName, messageLength: msg.length})
       const sequence = sequences.get(sequenceNumber) ?? {start: 0, end: 0}
       sequences.set(sequenceNumber, {start: sequence.start, end: sequence.end, acknowledged: true})
 
       sequencesAcknowledged++
-      offset += 4 + fileNameLength
+      offset += 4 + fileName.length
     }
 
     if (sequencesAcknowledged === sequences.size) {
@@ -101,22 +110,8 @@ async function main() {
         return console.error('UnexpectedFileNameMissing', {file})
       }
 
-      const outBuf = Buffer.alloc(2 + 2 + fileName.length + 4)
-      outBuf.writeInt16BE(sequenceNumber)
-      outBuf.writeInt16BE(fileName.length, 2)
-      
-      outBuf.write(fileName, 4, fileName.length, 'utf-8')
-      outBuf.writeInt32BE(0, fileName.length + 4)
-
-      client.send(outBuf, (err) => {
-        client.close()
-
-        if (err) {
-          console.error('ErrorSendingTerminatingMessage', { err })
-          return
-        }
-        console.log('SentTerminatingMessage')
-      }); 
+      await sendTerminatingSignal(client, fileName, sequenceNumber)
+      client.close()
     }
   })
 }

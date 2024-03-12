@@ -86,10 +86,17 @@ Receiver -
 - Implement acknowledgement on client side
 - Remove setTimeout hack after implementing acknowledgement on client side
 
-## Discussion on 5th MAr
+## Discussion on 5th Mar
 - Fixed an issue where server seems to expect 2 sequences instead of just one
 - Large files seem to be corrupted
 - Look into refactoring some of the code
+
+## Discussion on 12th Mar
+- Fixed issue where large files seem corrupted
+- Refactored some code
+- Start handling data corruption for next time
+  - Implement checksums
+  - Get started on retry mechanism
 
 ## Questions to handle next time:
 
