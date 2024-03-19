@@ -98,6 +98,10 @@ Receiver -
   - Implement checksums
   - Get started on retry mechanism
 
+## Discussion on 19th Mar
+- Handling incorrect packet structure
+- Implemented checksums but there's something wrong with the code
+
 ## Questions to handle next time:
 
 - Dropped packets

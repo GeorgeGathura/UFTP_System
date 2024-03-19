@@ -1,6 +1,8 @@
 import { access } from 'fs'
 import { mkdirp } from 'mkdirp'
 
+export const MD5_HASH_SIZE = 32
+
 export function createDataDirectory(directory:string) {
   return new Promise((resolve, reject) => {
     access(directory, function (error) {
@@ -16,9 +18,10 @@ export function createDataDirectory(directory:string) {
 
 export function readMessage(msg: Buffer, offset: number) {
   const sequenceNumber = msg.readInt16BE(offset)
-  const fileNameLength = msg.readInt16BE(2)
+  offset += 2
+  const fileNameLength = msg.readInt16BE(offset)
   const fileNameBuf = Buffer.alloc(fileNameLength)
-  msg.copy(fileNameBuf, 0, 4, fileNameLength + 4)
+  msg.copy(fileNameBuf, 0, offset, fileNameLength + offset)
   const fileName = fileNameBuf.toString()
 
   return {sequenceNumber, fileName}

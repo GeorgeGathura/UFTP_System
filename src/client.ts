@@ -1,7 +1,8 @@
 import dgram from 'node:dgram'
 import { createReadStream } from 'fs'
 import path from 'node:path'
-import { readMessage } from './common'
+import { MD5_HASH_SIZE, readMessage } from './common'
+import { createHash } from 'node:crypto'
 
 
 const CLIENT_TEMP_STORE = './temp/client/'
@@ -62,13 +63,22 @@ async function main() {
       }
 
       const outBuf = Buffer.alloc(2 + 2 + fileName.length + 4 + chunk.length)
-      outBuf.writeInt16BE(sequenceNumber)
-      outBuf.writeInt16BE(fileName.length, 2)
-      
-      outBuf.write(fileName, 4, fileName.length, 'utf-8')
+      let offset = 0
+      outBuf.writeInt16BE(sequenceNumber, offset)
+      offset += 2
 
-      outBuf.writeInt32BE(chunk.length, fileName.length + 4)
-      chunk.copy(outBuf, fileName.length + 8)
+      outBuf.writeInt16BE(fileName.length, offset)
+      offset += 2
+      outBuf.write(fileName, offset, fileName.length, 'utf-8')
+      offset += fileName.length
+
+      const checksum = createHash('md5').update(chunk).digest('hex')
+      chunk.write(checksum, offset, MD5_HASH_SIZE, 'utf-8')
+      offset += MD5_HASH_SIZE
+
+      outBuf.writeInt32BE(chunk.length, offset)
+      offset += 4
+      chunk.copy(outBuf, offset)
 
       sequences.set(sequenceNumber, {start, end: start + chunk.length})
 

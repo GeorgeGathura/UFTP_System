@@ -1,9 +1,10 @@
 import dgram from 'node:dgram'
 import path from 'path'
-import { createDataDirectory, readMessage } from './common';
+import { MD5_HASH_SIZE, createDataDirectory, readMessage } from './common';
 import { access } from 'node:fs/promises';
 import { type WriteStream, createWriteStream, createReadStream } from 'node:fs';
 import {rimraf} from 'rimraf'
+import { createHash } from 'node:crypto';
 
 type PromiseResolve = (value: unknown) => void
 
@@ -105,11 +106,47 @@ function flush(rinfo: dgram.RemoteInfo) {
   }
 }
 
+type Packet = {
+  sequenceNumber: number,
+  fileName: string,
+  data: Buffer
+}
+function tempFn(msg: Buffer): Packet {
+  const {sequenceNumber, fileName} = readMessage(msg, 0)
+  let offset = fileName.length + 4
+  
+  const checksumBuffer = Buffer.alloc(MD5_HASH_SIZE)
+  msg.copy(checksumBuffer, 0, offset, offset + MD5_HASH_SIZE)
+  offset += MD5_HASH_SIZE
+  const checksum = checksumBuffer.toString()
+
+  const dataLength = msg.readInt32BE(offset)
+  offset += 4
+  const data = Buffer.alloc(dataLength)
+  msg.copy(data, 0, offset)
+
+  const actualChecksum = createHash('md5').update(data).digest('hex')
+  if (checksum !== actualChecksum) {
+    console.error('ChecksumInvalid', {actualChecksum, receivedChecksum: checksum, sequenceNumber, fileName})
+    throw new Error('ChecksumInvalid')
+  }
+
+  return {sequenceNumber, fileName, data}
+}
+
 server.on('message', async (msg, rinfo) => {
   console.log(`server got a msg from ${rinfo.address}:${rinfo.port}`)
 
-  const {sequenceNumber, fileName} = readMessage(msg, 0)
+  let packet: Packet
+  try {
+    packet = tempFn(msg)
+  } catch (error) {
+    console.error('ErrorReadingPacket', {error})
+    return
+  }
 
+  const {sequenceNumber, fileName, data} = packet
+  
   if(typeof lastSequenceNumber !== 'undefined' && lastSequenceNumber + 1 !== sequenceNumber) {
     console.error('SequenceNumberOutOfSync', {sequenceNumber, lastSequenceNumber})
   }
@@ -129,7 +166,7 @@ server.on('message', async (msg, rinfo) => {
     readyToCompilePromises.set(fileName, [promise, promiseResolve])
   }
 
-  if (dataLength === 0) {
+  if (data.length === 0) {
     const result = readyToCompilePromises.get(fileName)
     if (result) {
       const [promise] = result
@@ -147,8 +184,6 @@ server.on('message', async (msg, rinfo) => {
   }
   largestSequenceNumbers.set(fileName, largestSequenceNumbers.get(fileName)! + 1)
 
-  const data = Buffer.alloc(dataLength)
-  msg.copy(data, 0, fileName.length + 8)
   console.log(`Received message for sequenceNumber = ${sequenceNumber}`, {sequenceNumber, fileNameLength: fileName.length, fileName: fileName, dataLength})
 
   const writeStream = createWriteStream(path.resolve(dataDirectory, `${sequenceNumber}.chunk`))
