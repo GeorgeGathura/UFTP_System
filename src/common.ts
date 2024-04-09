@@ -20,6 +20,7 @@ export function readMessage(msg: Buffer, offset: number) {
   const sequenceNumber = msg.readInt16BE(offset)
   offset += 2
   const fileNameLength = msg.readInt16BE(offset)
+  offset += 2
   const fileNameBuf = Buffer.alloc(fileNameLength)
   msg.copy(fileNameBuf, 0, offset, fileNameLength + offset)
   const fileName = fileNameBuf.toString()

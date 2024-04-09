@@ -73,7 +73,7 @@ async function main() {
       offset += fileName.length
 
       const checksum = createHash('md5').update(chunk).digest('hex')
-      chunk.write(checksum, offset, MD5_HASH_SIZE, 'utf-8')
+      outBuf.write(checksum, offset, MD5_HASH_SIZE)
       offset += MD5_HASH_SIZE
 
       outBuf.writeInt32BE(chunk.length, offset)
@@ -83,7 +83,7 @@ async function main() {
       sequences.set(sequenceNumber, {start, end: start + chunk.length})
 
       start += chunk.length
-      console.log({sequences, sequenceNumber, fileNameLength: fileName.length, fileName, chunkLength: chunk.length})
+      console.log({sequences, sequenceNumber, fileNameLength: fileName.length, fileName, checksum, chunkLength: chunk.length})
 
       client.send(outBuf, (err) => {
         if (err) {

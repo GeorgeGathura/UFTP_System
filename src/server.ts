@@ -127,7 +127,7 @@ function tempFn(msg: Buffer): Packet {
 
   const actualChecksum = createHash('md5').update(data).digest('hex')
   if (checksum !== actualChecksum) {
-    console.error('ChecksumInvalid', {actualChecksum, receivedChecksum: checksum, sequenceNumber, fileName})
+    console.error('ChecksumInvalid', {actualChecksum, receivedChecksum: checksum, sequenceNumber, fileName, data: data.toString(), dataLength})
     throw new Error('ChecksumInvalid')
   }
 

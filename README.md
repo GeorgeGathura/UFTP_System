@@ -102,6 +102,9 @@ Receiver -
 - Handling incorrect packet structure
 - Implemented checksums but there's something wrong with the code
 
+## Discussion on 9th Apr
+- We are now able to get the checksum from the client side but checksum validation is still failing because for some reason, we are unable to read all the data that's sent from the client side.
+
 ## Questions to handle next time:
 
 - Dropped packets
