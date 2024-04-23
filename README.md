@@ -105,6 +105,11 @@ Receiver -
 ## Discussion on 9th Apr
 - We are now able to get the checksum from the client side but checksum validation is still failing because for some reason, we are unable to read all the data that's sent from the client side.
 
+## Discussion on 23rd Apr
+- Got checksum validation to work
+- Next time we should simulate packet corruption and see if corrupted packets are detected
+- We can then get started on a retry mechanism so the client can resend a packet that's not successfully sent
+
 ## Questions to handle next time:
 
 - Dropped packets

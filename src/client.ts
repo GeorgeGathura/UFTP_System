@@ -62,7 +62,7 @@ async function main() {
         return console.error('UnexpectedFileNameMissing', {file})
       }
 
-      const outBuf = Buffer.alloc(2 + 2 + fileName.length + 4 + chunk.length)
+      const outBuf = Buffer.alloc(2 + 2 + fileName.length + MD5_HASH_SIZE + 4 + chunk.length)
       let offset = 0
       outBuf.writeInt16BE(sequenceNumber, offset)
       offset += 2
@@ -72,19 +72,19 @@ async function main() {
       outBuf.write(fileName, offset, fileName.length, 'utf-8')
       offset += fileName.length
 
+      outBuf.writeInt32BE(chunk.length, offset)
+      offset += 4
+
       const checksum = createHash('md5').update(chunk).digest('hex')
       outBuf.write(checksum, offset, MD5_HASH_SIZE)
       offset += MD5_HASH_SIZE
 
-      outBuf.writeInt32BE(chunk.length, offset)
-      offset += 4
       chunk.copy(outBuf, offset)
 
       sequences.set(sequenceNumber, {start, end: start + chunk.length})
 
       start += chunk.length
       console.log({sequences, sequenceNumber, fileNameLength: fileName.length, fileName, checksum, chunkLength: chunk.length})
-
       client.send(outBuf, (err) => {
         if (err) {
           console.error('ErrorSendingMessage', { err })

@@ -115,13 +115,18 @@ function tempFn(msg: Buffer): Packet {
   const {sequenceNumber, fileName} = readMessage(msg, 0)
   let offset = fileName.length + 4
   
+  const dataLength = msg.readInt32BE(offset)
+  offset += 4
+
+  if (dataLength === 0) {
+    return {sequenceNumber, fileName, data: Buffer.alloc(0)}
+  }
+
   const checksumBuffer = Buffer.alloc(MD5_HASH_SIZE)
   msg.copy(checksumBuffer, 0, offset, offset + MD5_HASH_SIZE)
   offset += MD5_HASH_SIZE
   const checksum = checksumBuffer.toString()
 
-  const dataLength = msg.readInt32BE(offset)
-  offset += 4
   const data = Buffer.alloc(dataLength)
   msg.copy(data, 0, offset)
 
@@ -146,6 +151,7 @@ server.on('message', async (msg, rinfo) => {
   }
 
   const {sequenceNumber, fileName, data} = packet
+  const dataLength = data.length
   
   if(typeof lastSequenceNumber !== 'undefined' && lastSequenceNumber + 1 !== sequenceNumber) {
     console.error('SequenceNumberOutOfSync', {sequenceNumber, lastSequenceNumber})
@@ -155,8 +161,6 @@ server.on('message', async (msg, rinfo) => {
   const filenameDirectory = getFilenameDirectory({port: rinfo.port, address: rinfo.address, filename: fileName})
   const dataDirectory = `${filenameDirectory}/temp/`
   await createDataDirectory(dataDirectory)
-
-  const dataLength = msg.readInt32BE(fileName.length + 4)
 
   if(readyToCompilePromises.has(fileName)) {
     let promiseResolve: PromiseResolve | undefined = undefined
