@@ -110,6 +110,17 @@ Receiver -
 - Next time we should simulate packet corruption and see if corrupted packets are detected
 - We can then get started on a retry mechanism so the client can resend a packet that's not successfully sent
 
+## Discussion on 21st May
+- Managed to simulate packet loss
+- Retry mechanism:
+  - for each chunk sent, we set a timeout for it
+  - if timeout elapses before the chunk is ack'ed then we resend it
+  - we need to set MAX_RETRIES
+- Worked on first iteration of retry mechanism
+  - Client side never seems to terminate
+  - Server side doesn't seem to receive all chunks
+  - Getting an error where a sequence number is not in the sequences map
+
 ## Questions to handle next time:
 
 - Dropped packets

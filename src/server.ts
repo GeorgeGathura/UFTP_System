@@ -142,6 +142,11 @@ function tempFn(msg: Buffer): Packet {
 server.on('message', async (msg, rinfo) => {
   console.log(`server got a msg from ${rinfo.address}:${rinfo.port}`)
 
+  if (Math.round(Math.random() * 100) > 50) {
+    console.error('DroppedPacketError')
+    return;
+  }
+
   let packet: Packet
   try {
     packet = tempFn(msg)

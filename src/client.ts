@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto'
 
 const CLIENT_TEMP_STORE = './temp/client/'
 
-const sequences = new Map<number, {start: number, end: number, acknowledged?: boolean}>()
+const sequences = new Map<number, {start: number, end: number, acknowledged?: boolean, retriesCount?: number}>()
 let sequencesAcknowledged = 0
 
 async function sendTerminatingSignal(client: dgram.Socket, fileName: string, sequenceNumber: number) {
@@ -29,6 +29,42 @@ async function sendTerminatingSignal(client: dgram.Socket, fileName: string, seq
         console.log('SentTerminatingMessage')
       })
   }); 
+}
+
+function resendChunk({client, fileName, chunk, sequenceNumber}: {client: dgram.Socket, fileName: string, chunk: Buffer, sequenceNumber: number}) {
+  const outBuf = Buffer.alloc(2 + 2 + fileName.length + MD5_HASH_SIZE + 4 + chunk.length)
+  let offset = 0
+  outBuf.writeInt16BE(sequenceNumber, offset)
+  offset += 2
+
+  outBuf.writeInt16BE(fileName.length, offset)
+  offset += 2
+  outBuf.write(fileName, offset, fileName.length, 'utf-8')
+  offset += fileName.length
+
+  outBuf.writeInt32BE(chunk.length, offset)
+  offset += 4
+
+  const checksum = createHash('md5').update(chunk).digest('hex')
+  outBuf.write(checksum, offset, MD5_HASH_SIZE)
+  offset += MD5_HASH_SIZE
+
+  chunk.copy(outBuf, offset)
+
+  client.send(outBuf, (err) => {
+    if (err) {
+      console.error('ErrorSendingMessage', { err })
+      return
+    }
+
+    console.log('ResentChunk')
+    setTimeout(() => {
+      const sequence = sequences.get(sequenceNumber);
+      if (!sequence?.acknowledged) {
+        resendChunk({client, fileName, chunk, sequenceNumber})
+      }
+    }, 2_000);
+  });
 }
 
 async function main() {
@@ -84,7 +120,6 @@ async function main() {
       sequences.set(sequenceNumber, {start, end: start + chunk.length})
 
       start += chunk.length
-      console.log({sequences, sequenceNumber, fileNameLength: fileName.length, fileName, checksum, chunkLength: chunk.length})
       client.send(outBuf, (err) => {
         if (err) {
           console.error('ErrorSendingMessage', { err })
@@ -92,7 +127,13 @@ async function main() {
           return
         }
 
-        console.log('SentChunk', {sequences})
+        console.log('SentChunk')
+        setTimeout(() => {
+          const sequence = sequences.get(sequenceNumber);
+          if (!sequence?.acknowledged) {
+            resendChunk({client, fileName, chunk, sequenceNumber})
+          }
+        }, 2_000);
       });
 
       sequenceNumber++
