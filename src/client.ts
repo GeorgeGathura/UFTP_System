@@ -60,10 +60,11 @@ function resendChunk({client, fileName, chunk, sequenceNumber}: {client: dgram.S
     console.log('ResentChunk')
     setTimeout(() => {
       const sequence = sequences.get(sequenceNumber);
+      console.log('TimeoutSending', {sequenceNumber, sequence})
       if (!sequence?.acknowledged) {
         resendChunk({client, fileName, chunk, sequenceNumber})
       }
-    }, 2_000);
+    }, 5_000);
   });
 }
 
@@ -120,6 +121,7 @@ async function main() {
       sequences.set(sequenceNumber, {start, end: start + chunk.length})
 
       start += chunk.length
+      const _sequenceNumber = sequenceNumber;
       client.send(outBuf, (err) => {
         if (err) {
           console.error('ErrorSendingMessage', { err })
@@ -127,13 +129,13 @@ async function main() {
           return
         }
 
-        console.log('SentChunk')
+        console.log('SentChunk', {_sequenceNumber})
         setTimeout(() => {
-          const sequence = sequences.get(sequenceNumber);
+          const sequence = sequences.get(_sequenceNumber);
           if (!sequence?.acknowledged) {
-            resendChunk({client, fileName, chunk, sequenceNumber})
+            resendChunk({client, fileName, chunk, sequenceNumber: _sequenceNumber})
           }
-        }, 2_000);
+        }, 10_000);
       });
 
       sequenceNumber++
@@ -152,6 +154,7 @@ async function main() {
       offset += 4 + fileName.length
     }
 
+    console.log('AfterAckSequence', {sequences, sequencesAcknowledged})
     if (sequencesAcknowledged === sequences.size) {
       console.log('ReceivedAcksForAllSequences')
       const fileName = file.split(path.sep).pop()

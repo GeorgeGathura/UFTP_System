@@ -142,11 +142,6 @@ function tempFn(msg: Buffer): Packet {
 server.on('message', async (msg, rinfo) => {
   console.log(`server got a msg from ${rinfo.address}:${rinfo.port}`)
 
-  if (Math.round(Math.random() * 100) > 50) {
-    console.error('DroppedPacketError')
-    return;
-  }
-
   let packet: Packet
   try {
     packet = tempFn(msg)
@@ -157,6 +152,11 @@ server.on('message', async (msg, rinfo) => {
 
   const {sequenceNumber, fileName, data} = packet
   const dataLength = data.length
+
+  // if (Math.round(Math.random() * 100) > 50 && dataLength > 0) {
+  //   console.error('DroppedPacketError')
+  //   return;
+  // }
   
   if(typeof lastSequenceNumber !== 'undefined' && lastSequenceNumber + 1 !== sequenceNumber) {
     console.error('SequenceNumberOutOfSync', {sequenceNumber, lastSequenceNumber})

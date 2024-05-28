@@ -121,6 +121,12 @@ Receiver -
   - Server side doesn't seem to receive all chunks
   - Getting an error where a sequence number is not in the sequences map
 
+## Discussion on 28th May
+- Figure out why some sequence numbers cannot be found in the sequences map
+  - Increment value of `sequenceNumber` was being used in the callbacks
+- Increasing the timeout value for resends allows us to send a small file
+- Need to figure out a better solution
+
 ## Questions to handle next time:
 
 - Dropped packets
