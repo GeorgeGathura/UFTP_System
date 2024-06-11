@@ -139,6 +139,7 @@ function tempFn(msg: Buffer): Packet {
   return {sequenceNumber, fileName, data}
 }
 
+const seenSequenceNumbers = new Map<string, Set<number>>();
 server.on('message', async (msg, rinfo) => {
   console.log(`server got a msg from ${rinfo.address}:${rinfo.port}`)
 
@@ -157,6 +158,15 @@ server.on('message', async (msg, rinfo) => {
   //   console.error('DroppedPacketError')
   //   return;
   // }
+
+  if (seenSequenceNumbers.has(fileName) && seenSequenceNumbers.get(fileName)?.has(sequenceNumber)) {
+    console.log('SequenceNumberAlreadProcessed')
+    return;
+  }
+  if (!seenSequenceNumbers.has(fileName)) {
+    seenSequenceNumbers.set(fileName, new Set())
+  }
+  seenSequenceNumbers.get(fileName)?.add(sequenceNumber)
   
   if(typeof lastSequenceNumber !== 'undefined' && lastSequenceNumber + 1 !== sequenceNumber) {
     console.error('SequenceNumberOutOfSync', {sequenceNumber, lastSequenceNumber})

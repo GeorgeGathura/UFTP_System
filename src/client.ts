@@ -135,7 +135,7 @@ async function main() {
           if (!sequence?.acknowledged) {
             resendChunk({client, fileName, chunk, sequenceNumber: _sequenceNumber})
           }
-        }, 10_000);
+        }, 2_000);
       });
 
       sequenceNumber++

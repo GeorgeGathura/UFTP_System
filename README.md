@@ -127,11 +127,13 @@ Receiver -
 - Increasing the timeout value for resends allows us to send a small file
 - Need to figure out a better solution
 
-## Questions to handle next time:
-
-- Dropped packets
-- Corrupted packets
-
-## Corner cases:
-
-- Empty text file
+## Discussion on 11th June
+- Figure out a better solution than increasing timeouts on the client side
+- Maybe next time
+  - Remove timeouts when sequence is ack'ed
+  - Add dynamic flags on client side to manage timeouts
+  - Add support for multiple files on client side
+  - Fix corner case for empty file
+  - Test across the Internet
+  - Handle program exit
+  - When resending, we should rely on start and end of sequence instead of entire chunk
