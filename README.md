@@ -137,3 +137,14 @@ Receiver -
   - Test across the Internet
   - Handle program exit
   - When resending, we should rely on start and end of sequence instead of entire chunk
+
+## Discussion on 23rd July
+
+-- Use of Octets instead of hexadecimal
+  - Effiency in parsing
+  - Simplicity and standradization
+* (Already implemented low level)
+
+- Send multiple files
+
+
