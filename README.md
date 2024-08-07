@@ -144,7 +144,16 @@ Receiver -
   - Effiency in parsing
   - Simplicity and standradization
 * (Already implemented low level)
-
 - Send multiple files
+
+## Discussion on 6th August
+
+  - Fix corner case for empty file
+
+## Conclusion
+
+
+
+
 
 

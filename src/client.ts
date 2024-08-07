@@ -3,6 +3,7 @@ import { createReadStream } from 'fs'
 import path from 'node:path'
 import { MD5_HASH_SIZE, readMessage } from './common'
 import { createHash } from 'node:crypto'
+import { exit } from 'node:process'
 
 
 const CLIENT_TEMP_STORE = './temp/client/'
@@ -14,7 +15,7 @@ async function sendTerminatingSignal(client: dgram.Socket, fileName: string, seq
   const outBuf = Buffer.alloc(2 + 2 + fileName.length + 4)
     outBuf.writeInt16BE(sequenceNumber)
     outBuf.writeInt16BE(fileName.length, 2)
-    
+
     outBuf.write(fileName, 4, fileName.length, 'utf-8')
     outBuf.writeInt32BE(0, fileName.length + 4)
 
@@ -28,7 +29,7 @@ async function sendTerminatingSignal(client: dgram.Socket, fileName: string, seq
         }
         console.log('SentTerminatingMessage')
       })
-  }); 
+  });
 }
 
 function resendChunk({client, fileName, chunk, sequenceNumber}: {client: dgram.Socket, fileName: string, chunk: Buffer, sequenceNumber: number}) {
@@ -120,6 +121,10 @@ async function main() {
 
       sequences.set(sequenceNumber, {start, end: start + chunk.length})
 
+      //encryption is done here. return as a string
+
+
+
       start += chunk.length
       const _sequenceNumber = sequenceNumber;
       client.send(outBuf, (err) => {
@@ -140,7 +145,16 @@ async function main() {
 
       sequenceNumber++
     })
-  
+    .on("close",() =>{
+
+        console.log("On Close... ");
+        if(sequenceNumber ===  0 )
+        {
+          console.log('File is empty....')
+          client.close()
+        }
+    })
+
   client.on('message', async (msg, rinfo) => {
     console.log(`server got a msg from ${rinfo.address}:${rinfo.port}`)
     let offset = 0
